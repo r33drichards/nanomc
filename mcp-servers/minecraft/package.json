@@ -1,0 +1,45 @@
+{
+  "name": "mineflayer-mcp",
+  "version": "1.0.0",
+  "description": "MCP server for controlling a Minecraft bot via mineflayer",
+  "type": "module",
+  "main": "dist/index.js",
+  "bin": {
+    "mineflayer-mcp": "dist/index.js"
+  },
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "keywords": [
+    "mcp",
+    "model-context-protocol",
+    "minecraft",
+    "mineflayer",
+    "bot"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.25.0",
+    "mineflayer": "^4.20.1",
+    "mineflayer-pathfinder": "^2.4.5",
+    "node-canvas-webgl": "^0.2.6",
+    "prismarine-viewer": "^1.19.2",
+    "three": "^0.126.1",
+    "zod": "^3.25.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "@types/three": "^0.126.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "overrides": {
+    "node-gyp": "^10.0.0"
+  }
+}

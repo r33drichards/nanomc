@@ -1,0 +1,23 @@
+{
+  "name": "nanoclaw-agent-runner",
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Agent runner for NanoClaw Railway edition (Vercel AI SDK + Bedrock)",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js"
+  },
+  "dependencies": {
+    "@ai-sdk/amazon-bedrock": "^4.0.77",
+    "@ai-sdk/mcp": "^1.0.25",
+    "@modelcontextprotocol/sdk": "^1.25.0",
+    "ai": "^6.0.116",
+    "cron-parser": "^5.5.0",
+    "zod": "^4.3.6"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "typescript": "^5.7.0"
+  }
+}

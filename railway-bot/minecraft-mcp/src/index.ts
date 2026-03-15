@@ -57,6 +57,88 @@ const VIEWER_PORT = parseInt(process.env.VIEWER_PORT || "3000");
 let bot: Bot | null = null;
 let botReady = false;
 let mcData: ReturnType<typeof minecraftData> | null = null;
+let autoReconnect = true;
+let lastConnectOpts: { host: string; port: number; username: string; auth: string } | null = null;
+let reconnecting = false;
+
+function setupAutoReconnect() {
+  if (!bot) return;
+  bot.on("end", (reason) => {
+    console.error(`[mineflayer-mcp] Bot disconnected: ${reason}`);
+    botReady = false;
+    if (autoReconnect && lastConnectOpts && !reconnecting) {
+      reconnecting = true;
+      console.error("[mineflayer-mcp] Auto-reconnecting in 5 seconds...");
+      setTimeout(() => {
+        reconnecting = false;
+        if (!botReady && lastConnectOpts) {
+          console.error("[mineflayer-mcp] Reconnecting...");
+          doConnect(lastConnectOpts.host, lastConnectOpts.port, lastConnectOpts.username, lastConnectOpts.auth);
+        }
+      }, 5000);
+    }
+  });
+}
+
+function doConnect(host: string, port: number, username: string, auth: string): Promise<string> {
+  return new Promise((resolve) => {
+    bot = mineflayer.createBot({
+      host, port, username,
+      password: MC_PASSWORD,
+      auth: auth as "offline" | "microsoft",
+    });
+    lastConnectOpts = { host, port, username, auth };
+
+    bot.on("spawn", async () => {
+      try {
+        console.error("[mineflayer-mcp] Bot spawned, loading pathfinder...");
+        bot!.loadPlugin(pathfinder);
+        const defaultMovements = new Movements(bot!);
+        bot!.pathfinder.setMovements(defaultMovements);
+        mcData = minecraftData(bot!.version);
+        console.error(`[mineflayer-mcp] Loaded minecraft-data for version ${bot!.version}`);
+        await bot!.waitForChunksToLoad();
+        console.error("[mineflayer-mcp] Chunks loaded, bot ready");
+
+        if (mineflayerViewer) {
+          try {
+            mineflayerViewer(bot!, { port: VIEWER_PORT, firstPerson: false });
+          } catch (viewerErr: any) {
+            console.error("[mineflayer-mcp] Web viewer failed:", viewerErr.message);
+          }
+        }
+
+        botReady = true;
+        setupAutoReconnect();
+        resolve(`Connected to ${host}:${port} as ${username}. Bot is ready.`);
+      } catch (err: any) {
+        console.error("[mineflayer-mcp] Spawn error:", err);
+        setupAutoReconnect();
+        resolve(`Spawn error: ${err.message}`);
+      }
+    });
+
+    bot.on("error", (err) => {
+      botReady = false;
+      setupAutoReconnect();
+      resolve(`Connection error: ${err.message}`);
+    });
+
+    bot.on("kicked", (reason) => {
+      botReady = false;
+      console.error(`[mineflayer-mcp] Kicked: ${reason}`);
+      setupAutoReconnect();
+      resolve(`Kicked: ${reason}`);
+    });
+
+    setTimeout(() => {
+      if (!botReady) {
+        setupAutoReconnect();
+        resolve("Connection timeout after 30 seconds");
+      }
+    }, 30000);
+  });
+}
 
 // Task tracking for background eval
 interface Task {
@@ -100,102 +182,48 @@ server.tool(
       };
     }
 
-    const connectHost = host || MC_HOST;
-    const connectPort = port || MC_PORT;
-    const connectUsername = username || MC_USERNAME;
-    const connectAuth = auth || MC_AUTH;
+    const result = await doConnect(
+      host || MC_HOST,
+      port || MC_PORT,
+      username || MC_USERNAME,
+      auth || MC_AUTH,
+    );
+    return { content: [{ type: "text", text: result }] };
+  }
+);
 
-    return new Promise((resolve) => {
-      bot = mineflayer.createBot({
-        host: connectHost,
-        port: connectPort,
-        username: connectUsername,
-        password: MC_PASSWORD,
-        auth: connectAuth as "offline" | "microsoft",
-      });
-
-      bot.on("spawn", async () => {
-        try {
-          console.error("[mineflayer-mcp] Bot spawned, loading pathfinder...");
-          bot!.loadPlugin(pathfinder);
-          const defaultMovements = new Movements(bot!);
-          bot!.pathfinder.setMovements(defaultMovements);
-          console.error("[mineflayer-mcp] Pathfinder loaded, loading minecraft-data...");
-          mcData = minecraftData(bot!.version);
-          console.error(`[mineflayer-mcp] Loaded minecraft-data for version ${bot!.version}`);
-          console.error("[mineflayer-mcp] Waiting for chunks...");
-          await bot!.waitForChunksToLoad();
-          console.error("[mineflayer-mcp] Chunks loaded, bot ready");
-
-          // Start web viewer (firstPerson: false for third-party view with freelook)
-          if (mineflayerViewer) {
-            try {
-              mineflayerViewer(bot!, { port: VIEWER_PORT, firstPerson: false });
-              console.error(`[mineflayer-mcp] Web viewer started on port ${VIEWER_PORT} (third-party view)`);
-            } catch (viewerErr: any) {
-              console.error("[mineflayer-mcp] Web viewer failed to start:", viewerErr.message);
-            }
-          }
-
-          botReady = true;
-          resolve({
-            content: [
-              {
-                type: "text",
-                text: `Connected to ${connectHost}:${connectPort} as ${connectUsername}. Bot is ready. Viewer on port ${VIEWER_PORT}.`,
-              },
-            ],
-          });
-        } catch (err: any) {
-          console.error("[mineflayer-mcp] Spawn error:", err);
-          resolve({
-            content: [{ type: "text", text: `Spawn/initialization error: ${err.message}\n${err.stack}` }],
-            isError: true,
-          });
-        }
-      });
-
-      bot.on("error", (err) => {
-        botReady = false;
-        resolve({
-          content: [{ type: "text", text: `Connection error: ${err.message}` }],
-          isError: true,
-        });
-      });
-
-      bot.on("kicked", (reason) => {
-        botReady = false;
-        resolve({
-          content: [{ type: "text", text: `Kicked from server: ${reason}` }],
-          isError: true,
-        });
-      });
-
-      // Timeout after 30 seconds
-      setTimeout(() => {
-        if (!botReady) {
-          resolve({
-            content: [{ type: "text", text: "Connection timeout after 30 seconds" }],
-            isError: true,
-          });
-        }
-      }, 30000);
-    });
+// Tool: Check bot status
+server.tool(
+  "status",
+  "Check if the bot is connected and get its current state (position, health, food). Use this before running commands to verify connection.",
+  {},
+  async () => {
+    if (!bot || !botReady) {
+      return {
+        content: [{ type: "text", text: `Bot is NOT connected. Auto-reconnect: ${autoReconnect}. Last server: ${lastConnectOpts ? `${lastConnectOpts.host}:${lastConnectOpts.port}` : 'none'}` }],
+      };
+    }
+    const pos = bot.entity?.position;
+    return {
+      content: [{ type: "text", text: `Bot CONNECTED as ${bot.username} at (${pos?.x?.toFixed(1)}, ${pos?.y?.toFixed(1)}, ${pos?.z?.toFixed(1)}). Health: ${bot.health}/20, Food: ${bot.food}/20. Auto-reconnect: ${autoReconnect}` }],
+    };
   }
 );
 
 // Tool: Disconnect from server
 server.tool(
   "disconnect",
-  "Disconnect the bot from the Minecraft server",
-  {},
-  async () => {
+  "Disconnect the bot from the Minecraft server. Set auto_reconnect=false to prevent auto-reconnect.",
+  { auto_reconnect: z.boolean().optional().describe("If false, disables auto-reconnect (default: keeps current setting)") },
+  async ({ auto_reconnect }) => {
+    if (auto_reconnect !== undefined) autoReconnect = auto_reconnect;
     if (!bot) {
       return {
         content: [{ type: "text", text: "Bot is not connected." }],
       };
     }
 
+    autoReconnect = false; // Don't auto-reconnect on manual disconnect
     bot.end();
     bot = null;
     botReady = false;

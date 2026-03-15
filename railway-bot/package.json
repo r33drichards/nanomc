@@ -1,0 +1,27 @@
+{
+  "name": "nanomc-irc",
+  "version": "0.2.0",
+  "description": "NanoMC IRC bot — Vercel AI SDK + Bedrock + Minecraft MCP",
+  "type": "module",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "dev": "tsx src/index.ts"
+  },
+  "dependencies": {
+    "@ai-sdk/amazon-bedrock": "^4.0.77",
+    "@ai-sdk/mcp": "^1.0.25",
+    "@modelcontextprotocol/sdk": "^1.25.0",
+    "ai": "^6.0.116",
+    "irc-framework": "^4.13.1"
+  },
+  "devDependencies": {
+    "@types/node": "^22.0.0",
+    "tsx": "^4.19.0",
+    "typescript": "^5.7.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

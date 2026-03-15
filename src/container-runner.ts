@@ -237,15 +237,35 @@ function buildContainerArgs(
   }
 
   // AWS Bedrock support: pass credentials and config to containers
-  if (process.env.CLAUDE_CODE_USE_BEDROCK === '1' || process.env.AWS_ACCESS_KEY_ID) {
-    if (process.env.CLAUDE_CODE_USE_BEDROCK) args.push('-e', `CLAUDE_CODE_USE_BEDROCK=${process.env.CLAUDE_CODE_USE_BEDROCK}`);
-    if (process.env.AWS_ACCESS_KEY_ID) args.push('-e', `AWS_ACCESS_KEY_ID=${process.env.AWS_ACCESS_KEY_ID}`);
-    if (process.env.AWS_SECRET_ACCESS_KEY) args.push('-e', `AWS_SECRET_ACCESS_KEY=${process.env.AWS_SECRET_ACCESS_KEY}`);
-    if (process.env.AWS_SESSION_TOKEN) args.push('-e', `AWS_SESSION_TOKEN=${process.env.AWS_SESSION_TOKEN}`);
-    if (process.env.AWS_REGION) args.push('-e', `AWS_REGION=${process.env.AWS_REGION}`);
-    if (process.env.AWS_DEFAULT_REGION) args.push('-e', `AWS_DEFAULT_REGION=${process.env.AWS_DEFAULT_REGION}`);
-    if (process.env.ANTHROPIC_MODEL) args.push('-e', `ANTHROPIC_MODEL=${process.env.ANTHROPIC_MODEL}`);
-    if (process.env.CLAUDE_CODE_BEDROCK_MODEL) args.push('-e', `CLAUDE_CODE_BEDROCK_MODEL=${process.env.CLAUDE_CODE_BEDROCK_MODEL}`);
+  if (
+    process.env.CLAUDE_CODE_USE_BEDROCK === '1' ||
+    process.env.AWS_ACCESS_KEY_ID
+  ) {
+    if (process.env.CLAUDE_CODE_USE_BEDROCK)
+      args.push(
+        '-e',
+        `CLAUDE_CODE_USE_BEDROCK=${process.env.CLAUDE_CODE_USE_BEDROCK}`,
+      );
+    if (process.env.AWS_ACCESS_KEY_ID)
+      args.push('-e', `AWS_ACCESS_KEY_ID=${process.env.AWS_ACCESS_KEY_ID}`);
+    if (process.env.AWS_SECRET_ACCESS_KEY)
+      args.push(
+        '-e',
+        `AWS_SECRET_ACCESS_KEY=${process.env.AWS_SECRET_ACCESS_KEY}`,
+      );
+    if (process.env.AWS_SESSION_TOKEN)
+      args.push('-e', `AWS_SESSION_TOKEN=${process.env.AWS_SESSION_TOKEN}`);
+    if (process.env.AWS_REGION)
+      args.push('-e', `AWS_REGION=${process.env.AWS_REGION}`);
+    if (process.env.AWS_DEFAULT_REGION)
+      args.push('-e', `AWS_DEFAULT_REGION=${process.env.AWS_DEFAULT_REGION}`);
+    if (process.env.ANTHROPIC_MODEL)
+      args.push('-e', `ANTHROPIC_MODEL=${process.env.ANTHROPIC_MODEL}`);
+    if (process.env.CLAUDE_CODE_BEDROCK_MODEL)
+      args.push(
+        '-e',
+        `CLAUDE_CODE_BEDROCK_MODEL=${process.env.CLAUDE_CODE_BEDROCK_MODEL}`,
+      );
   }
 
   // Mirror the host's auth method with a placeholder value.

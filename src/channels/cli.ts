@@ -35,7 +35,9 @@ class CliChannel implements Channel {
     this.onChatMetadata(CLI_JID, new Date().toISOString(), 'CLI', 'cli', false);
 
     logger.info('CLI channel connected — type messages below');
-    console.log(`\n💬 CLI mode active. Messages are sent to ${ASSISTANT_NAME}. Press Ctrl+C to exit.\n`);
+    console.log(
+      `\n💬 CLI mode active. Messages are sent to ${ASSISTANT_NAME}. Press Ctrl+C to exit.\n`,
+    );
     this.rl.prompt();
 
     this.rl.on('line', (line) => {

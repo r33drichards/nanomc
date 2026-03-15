@@ -6,7 +6,16 @@ import { readEnvFile } from './env.js';
 // Read config values from .env (falls back to process.env).
 // Secrets (API keys, tokens) are NOT read here — they are loaded only
 // by the credential proxy (credential-proxy.ts), never exposed to containers.
-const envConfig = readEnvFile(['ASSISTANT_NAME', 'ASSISTANT_HAS_OWN_NUMBER', 'MC_MCP_ENABLED', 'MC_HOST', 'MC_PORT', 'MC_USERNAME', 'MC_AUTH', 'CLI_CHANNEL']);
+const envConfig = readEnvFile([
+  'ASSISTANT_NAME',
+  'ASSISTANT_HAS_OWN_NUMBER',
+  'MC_MCP_ENABLED',
+  'MC_HOST',
+  'MC_PORT',
+  'MC_USERNAME',
+  'MC_AUTH',
+  'CLI_CHANNEL',
+]);
 
 export const ASSISTANT_NAME =
   process.env.ASSISTANT_NAME || envConfig.ASSISTANT_NAME || 'NanoMC';

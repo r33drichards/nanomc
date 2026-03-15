@@ -25,10 +25,12 @@
     "@modelcontextprotocol/sdk": "^1.25.0",
     "mineflayer": "^4.20.1",
     "mineflayer-pathfinder": "^2.4.5",
+    "zod": "^3.25.0"
+  },
+  "optionalDependencies": {
     "node-canvas-webgl": "^0.2.6",
     "prismarine-viewer": "^1.19.2",
-    "three": "^0.126.1",
-    "zod": "^3.25.0"
+    "three": "^0.126.1"
   },
   "devDependencies": {
     "@types/node": "^22.0.0",

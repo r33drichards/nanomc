@@ -17,20 +17,33 @@ import minecraftData from "minecraft-data";
 import { Vec3 } from "vec3";
 const { pathfinder, Movements, goals } = mineflayerPathfinder;
 
-// Screenshot dependencies
-// @ts-ignore - no types available
-import prismarineViewer from "prismarine-viewer/viewer/index.js";
-const { Viewer, WorldView, getBufferFromStream } = prismarineViewer;
-// @ts-ignore - no types available
-import { createCanvas } from "node-canvas-webgl/lib/index.js";
-import * as THREE from "three";
+// Screenshot dependencies (optional — loaded dynamically)
 import { Worker } from "worker_threads";
-// Set global Worker for prismarine-viewer
 (global as any).Worker = Worker;
 
-// Web viewer for live view
-// @ts-ignore - no types available
-import { mineflayer as mineflayerViewer } from "prismarine-viewer";
+let Viewer: any, WorldView: any, getBufferFromStream: any;
+let createCanvas: any;
+let THREE: any;
+let mineflayerViewer: any;
+let screenshotAvailable = false;
+
+try {
+  // Use string variables to prevent TypeScript from resolving these at compile time
+  const pvViewerPath = "prismarine-viewer/viewer/index.js";
+  const canvasPath = "node-canvas-webgl/lib/index.js";
+  const threePath = "three";
+  const pvPath = "prismarine-viewer";
+  const prismarineViewerMod = await import(/* @vite-ignore */ pvViewerPath);
+  ({ Viewer, WorldView, getBufferFromStream } = prismarineViewerMod.default || prismarineViewerMod);
+  const canvasMod = await import(/* @vite-ignore */ canvasPath);
+  createCanvas = canvasMod.createCanvas;
+  THREE = await import(/* @vite-ignore */ threePath);
+  const viewerMod = await import(/* @vite-ignore */ pvPath);
+  mineflayerViewer = viewerMod.mineflayer;
+  screenshotAvailable = true;
+} catch {
+  // Screenshot deps not available — screenshot tool will return an error
+}
 
 // Configuration from environment
 const MC_HOST = process.env.MC_HOST || "localhost";
@@ -115,11 +128,13 @@ server.tool(
           console.error("[mineflayer-mcp] Chunks loaded, bot ready");
 
           // Start web viewer (firstPerson: false for third-party view with freelook)
-          try {
-            mineflayerViewer(bot!, { port: VIEWER_PORT, firstPerson: false });
-            console.error(`[mineflayer-mcp] Web viewer started on port ${VIEWER_PORT} (third-party view)`);
-          } catch (viewerErr: any) {
-            console.error("[mineflayer-mcp] Web viewer failed to start:", viewerErr.message);
+          if (mineflayerViewer) {
+            try {
+              mineflayerViewer(bot!, { port: VIEWER_PORT, firstPerson: false });
+              console.error(`[mineflayer-mcp] Web viewer started on port ${VIEWER_PORT} (third-party view)`);
+            } catch (viewerErr: any) {
+              console.error("[mineflayer-mcp] Web viewer failed to start:", viewerErr.message);
+            }
           }
 
           botReady = true;
@@ -505,6 +520,12 @@ server.tool(
     view_distance: z.number().optional().describe("View distance in chunks (default: 4)"),
   },
   async ({ output_path, width, height, direction, view_distance }) => {
+    if (!screenshotAvailable) {
+      return {
+        content: [{ type: "text", text: "Screenshot dependencies not available (prismarine-viewer, node-canvas-webgl, three). Install optional deps to enable screenshots." }],
+        isError: true,
+      };
+    }
     if (!bot || !botReady) {
       return {
         content: [{ type: "text", text: "Bot is not connected. Use connect tool first." }],

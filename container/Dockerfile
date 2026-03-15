@@ -3,7 +3,7 @@
 
 FROM node:22-slim
 
-# Install system dependencies for Chromium + mc-mcp (canvas/WebGL for screenshots)
+# Install system dependencies for Chromium
 RUN apt-get update && apt-get install -y \
     chromium \
     fonts-liberation \
@@ -22,17 +22,8 @@ RUN apt-get update && apt-get install -y \
     libcups2 \
     libdrm2 \
     libxshmfence1 \
-    xvfb \
-    libcairo2-dev \
-    libjpeg-dev \
-    libpango1.0-dev \
-    libgif-dev \
-    build-essential \
-    libxi-dev \
-    libgl1-mesa-dev \
     curl \
     git \
-    python3 \
     && rm -rf /var/lib/apt/lists/*
 
 # Set Chromium path for agent-browser
@@ -59,7 +50,7 @@ RUN npm run build
 
 # Install mc-mcp (Minecraft MCP server)
 COPY minecraft-mcp/ /workspace/minecraft-mcp/
-RUN cd /workspace/minecraft-mcp && npm install && npm run build
+RUN cd /workspace/minecraft-mcp && npm install --ignore-scripts --omit=optional && npm run build
 
 # Create workspace directories
 RUN mkdir -p /workspace/group /workspace/global /workspace/extra /workspace/ipc/messages /workspace/ipc/tasks /workspace/ipc/input

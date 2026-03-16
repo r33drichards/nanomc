@@ -330,6 +330,11 @@ export function deleteTask(id: string): void {
   db.prepare('DELETE FROM scheduled_tasks WHERE id = ?').run(id);
 }
 
+export function clearAllActiveTasks(): number {
+  const result = db.prepare(`UPDATE scheduled_tasks SET status = 'completed' WHERE status = 'active'`).run();
+  return result.changes;
+}
+
 export function getDueTasks(): ScheduledTask[] {
   const now = new Date().toISOString();
   return db

@@ -167,12 +167,15 @@ async function main(): Promise<void> {
     log(`Failed to init NanoClaw MCP: ${err instanceof Error ? err.message : String(err)}`);
   }
 
-  // Minecraft MCP server (optional)
+  // Minecraft MCP server (optional, restartable)
   let mcTools: Record<string, any> = {};
   let mcClient: Awaited<ReturnType<typeof createMCPClient>> | null = null;
 
-  if (process.env.MC_MCP_ENABLED === '1') {
+  async function initMinecraftMcp(): Promise<void> {
     try {
+      if (mcClient) {
+        try { await mcClient.close(); } catch { /* ignore */ }
+      }
       log('Initializing Minecraft MCP server...');
       const mcTransport = new StdioClientTransport({
         command: 'node',
@@ -190,10 +193,28 @@ async function main(): Promise<void> {
       log(`Minecraft MCP tools loaded: ${Object.keys(mcTools).join(', ')}`);
     } catch (err) {
       log(`Failed to init Minecraft MCP: ${err instanceof Error ? err.message : String(err)}`);
+      mcTools = {};
     }
   }
 
-  const allTools = { ...nanoclawTools, ...mcTools };
+  if (process.env.MC_MCP_ENABLED === '1') {
+    await initMinecraftMcp();
+  }
+
+  // Custom tool: restart the Minecraft MCP server
+  const allTools: Record<string, any> = { ...nanoclawTools, ...mcTools };
+
+  // Add restart tool using the same pattern as MCP tools
+  allTools.restart_minecraft = {
+    description: 'Restart the Minecraft MCP server. Use this if Minecraft tools stop working or the bot disconnects and tools fail.',
+    parameters: { type: 'object', properties: {} },
+    execute: async () => {
+      log('Restarting Minecraft MCP server...');
+      await initMinecraftMcp();
+      Object.assign(allTools, mcTools);
+      return `Minecraft MCP server restarted. Tools available: ${Object.keys(mcTools).join(', ')}`;
+    },
+  };
 
   // Build system prompt
   const assistantName = containerInput.assistantName || 'NanoMC';
@@ -300,7 +321,7 @@ async function main(): Promise<void> {
 
   // Cleanup MCP clients
   if (nanoclawClient) await nanoclawClient.close().catch(() => {});
-  if (mcClient) await mcClient.close().catch(() => {});
+  try { if (mcClient) await (mcClient as any).close(); } catch { /* ignore */ }
 }
 
 function buildSystemPrompt(assistantName: string, input: ContainerInput): string {
@@ -312,6 +333,8 @@ function buildSystemPrompt(assistantName: string, input: ContainerInput): string
   parts.push('IMPORTANT: The Minecraft bot has AUTO-RECONNECT. If disconnected, it reconnects automatically in 5 seconds. Use the "status" tool to check if the bot is connected before assuming it is disconnected.');
   parts.push('When asked to do Minecraft things, use the Minecraft MCP tools. First call "status" to check, then "connect" only if not connected.');
   parts.push('The eval tool lets you run JavaScript with the mineflayer bot object (bot, goals, Movements, mcData, Vec3).');
+  parts.push('');
+  parts.push('If Minecraft tools stop working or return errors about closed connections, call the "restart_minecraft" tool to restart the MCP server, then retry your action.');
   parts.push('');
   parts.push('Use send_message to send progress updates or multiple messages while working.');
   parts.push('Use schedule_task to create recurring or one-time tasks.');

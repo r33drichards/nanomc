@@ -126,7 +126,8 @@ export async function runDirectAgent(
   if (process.env.AWS_SESSION_TOKEN) childEnv.AWS_SESSION_TOKEN = process.env.AWS_SESSION_TOKEN;
   if (process.env.BEDROCK_MODEL) childEnv.BEDROCK_MODEL = process.env.BEDROCK_MODEL;
 
-  // Minecraft MCP config
+  // Minecraft MCP config — prefer persistent SSE server
+  if (process.env.MC_MCP_SSE_URL) childEnv.MC_MCP_SSE_URL = process.env.MC_MCP_SSE_URL;
   if (process.env.MC_MCP_ENABLED) childEnv.MC_MCP_ENABLED = process.env.MC_MCP_ENABLED;
   if (process.env.MC_HOST) childEnv.MC_HOST = process.env.MC_HOST;
   if (process.env.MC_PORT) childEnv.MC_PORT = process.env.MC_PORT;
@@ -206,7 +207,7 @@ export async function runDirectAgent(
       const chunk = data.toString();
       const lines = chunk.trim().split('\n');
       for (const line of lines) {
-        if (line) logger.debug({ process: group.folder }, line);
+        if (line) logger.info({ src: 'agent', process: group.folder }, line);
       }
       if (stderrTruncated) return;
       const remaining = PROCESS_MAX_OUTPUT_SIZE - stderr.length;

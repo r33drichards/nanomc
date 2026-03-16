@@ -9,6 +9,8 @@
 
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { StdioServerTransport } from "@modelcontextprotocol/sdk/server/stdio.js";
+import { SSEServerTransport } from "@modelcontextprotocol/sdk/server/sse.js";
+import http from "http";
 import { z } from "zod";
 import mineflayer, { Bot } from "mineflayer";
 import mineflayerPathfinder from "mineflayer-pathfinder";
@@ -659,8 +661,42 @@ server.tool(
 
 // Start the server
 async function main() {
-  const transport = new StdioServerTransport();
-  await server.connect(transport);
+  const httpPort = process.env.MC_MCP_HTTP_PORT;
+
+  if (httpPort) {
+    // HTTP/SSE mode — persistent server that multiple clients can connect to
+    const port = parseInt(httpPort);
+    let sseTransport: SSEServerTransport | null = null;
+
+    const httpServer = http.createServer(async (req, res) => {
+      if (req.method === 'GET' && req.url === '/sse') {
+        console.error(`[mineflayer-mcp] SSE client connected`);
+        sseTransport = new SSEServerTransport('/messages', res);
+        await server.connect(sseTransport);
+      } else if (req.method === 'POST' && req.url === '/messages') {
+        if (sseTransport) {
+          await sseTransport.handlePostMessage(req, res);
+        } else {
+          res.writeHead(503);
+          res.end('No SSE connection');
+        }
+      } else if (req.method === 'GET' && req.url === '/health') {
+        res.writeHead(200);
+        res.end(JSON.stringify({ status: 'ok', botReady, autoReconnect }));
+      } else {
+        res.writeHead(404);
+        res.end('Not found');
+      }
+    });
+
+    httpServer.listen(port, '127.0.0.1', () => {
+      console.error(`[mineflayer-mcp] HTTP/SSE server listening on port ${port}`);
+    });
+  } else {
+    // Stdio mode (default)
+    const transport = new StdioServerTransport();
+    await server.connect(transport);
+  }
 }
 
 main().catch(console.error);

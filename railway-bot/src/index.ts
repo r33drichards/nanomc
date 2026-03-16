@@ -7,6 +7,7 @@
  */
 import fs from 'fs';
 import path from 'path';
+import { spawn, ChildProcess } from 'child_process';
 import { Client } from 'irc-framework';
 
 import {
@@ -24,6 +25,7 @@ import {
   writeTasksSnapshot,
 } from './direct-runner.js';
 import {
+  clearAllActiveTasks,
   getAllChats,
   getAllRegisteredGroups,
   getAllSessions,
@@ -535,7 +537,23 @@ async function main(): Promise<void> {
 
   initDatabase();
   logger.info('Database initialized');
+
+  // Clear stale scheduled tasks from previous sessions to prevent blocking
+  const staleCount = clearAllActiveTasks();
+  if (staleCount > 0) {
+    logger.info({ count: staleCount }, 'Cleared stale scheduled tasks from previous session');
+  }
+
   loadState();
+
+  // Reset message cursors to current time so we don't reprocess old messages on restart
+  const now = new Date().toISOString();
+  lastTimestamp = now;
+  for (const jid of Object.keys(registeredGroups)) {
+    lastAgentTimestamp[jid] = now;
+  }
+  saveState();
+  logger.info('Reset message cursors to current time (fresh start)');
 
   // Auto-register the IRC channel as the main group if not already registered
   if (!registeredGroups[IRC_JID]) {
@@ -598,7 +616,7 @@ async function main(): Promise<void> {
   });
 
   queue.setProcessMessagesFn(processGroupMessages);
-  recoverPendingMessages();
+  // Skip recoverPendingMessages — we reset cursors to now on startup
   startMessageLoop().catch((err) => {
     logger.fatal({ err }, 'Message loop crashed unexpectedly');
     process.exit(1);
